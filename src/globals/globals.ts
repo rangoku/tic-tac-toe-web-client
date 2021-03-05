@@ -1,7 +1,7 @@
 import { PlayerSymbol } from "../types/player"
 
 // config
-export const SERVER_URL = 'http://localhost:5000'
+export const SERVER_URL = 'https://tic-tac-toe-web-api.herokuapp.com'
 
 // player
 let PLAYER_SYMBOL: PlayerSymbol
