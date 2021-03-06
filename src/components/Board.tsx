@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Loader from 'react-loader-spinner'
-import { setBoardCell } from '../board/board'
+import { board, setBoardCell } from '../board/board'
 import { handleClick } from '../functions/handleClick'
 import { socket } from '../functions/sockets'
 import { PLAYER_SYMBOL } from '../globals/globals'
@@ -23,6 +23,8 @@ export default function Board(): JSX.Element {
     const [isMyMove, setIsMyMove] = useState(true)
     const [isGameOver, setIsGameOver] = useState(false)
     const [isWin, setIsWin] = useState(false)
+    const [isDraw, setIsDraw] = useState(false)
+    const [isOpponentDisconnected, setIsOpponentDisconnected] = useState(false)
 
     const boardRef = useRef<HTMLDivElement>(null)
 
@@ -50,6 +52,20 @@ export default function Board(): JSX.Element {
         )
 
 
+    const disableBoard = (board: typeof boardRef): void => {
+        board.current!.style.pointerEvents = 'none'
+    }
+
+    const enableBoard = (board: typeof boardRef): void => {
+        board.current!.style.pointerEvents = 'auto'
+    }
+
+    const makePageReloadOnClick = (): void => {
+        document.querySelector('body')?.addEventListener('click', () => {
+            window.location.href = '/'
+        })
+    }
+
     useEffect(() => {
 
         socket.on('start-game', (first_turn: string) => {
@@ -65,16 +81,23 @@ export default function Board(): JSX.Element {
 
             eval(`btn${turn.position}`).current!.innerHTML = turn.symbol
 
+            setBoardCell(turn.position, turn.symbol)
+
             if (turn.symbol !== PLAYER_SYMBOL) {
-                boardRef.current!.style.pointerEvents = 'auto'
+                enableBoard(boardRef)
                 setIsMyMove(true)
             }
             else {
-                boardRef.current!.style.pointerEvents = 'none'
+                disableBoard(boardRef)
                 setIsMyMove(false)
             }
 
-            setBoardCell(turn.position, turn.symbol)
+        })
+
+        socket.on('draw', () => {
+            setIsDraw(true)
+            setIsGameOver(true)
+            makePageReloadOnClick()
         })
 
         socket.on('game-over', (
@@ -83,19 +106,22 @@ export default function Board(): JSX.Element {
 
             setIsGameOver(true)
 
-            boardRef.current!.style.pointerEvents = 'none'
-
-            document.querySelector('body')?.addEventListener('click', () => {
-                window.location.href = '/'
-            })
+            disableBoard(boardRef)
+            makePageReloadOnClick()
 
             for (let i: number = 0; i < gameOver.combination.length; ++i)
                 eval(`btn${gameOver.combination[i]}`).current!.style.color = 'yellow'
 
-            setIsWin(
-                gameOver.winner === PLAYER_SYMBOL
-            )
+            setIsWin(gameOver.winner === PLAYER_SYMBOL)
 
+        })
+
+        socket.on('opponent-disconnected', () => {
+            disableBoard(boardRef)
+            makePageReloadOnClick()
+
+            setIsOpponentDisconnected(true)
+            setIsGameOver(true)
         })
 
     }, [])
@@ -108,11 +134,13 @@ export default function Board(): JSX.Element {
                         <>
                             <h1 className="__default__color-green" style={{ marginBottom: '2rem' }}>
                                 {
-                                    isGameOver ?
-                                        isWin ?
-                                            <span>You win!</span> : <span>You lose!</span>
-                                        :
-                                        isMyMove ? <span>Your turn</span> : <span>Opponent's turn</span>
+                                    isOpponentDisconnected ? <span>Opponent left</span>
+                                        : isGameOver ?
+                                            isDraw ? <span>Draw</span>
+                                                : isWin ?
+                                                    <span>You win!</span> : <span>You lose!</span>
+                                            :
+                                            isMyMove ? <span>Your turn</span> : <span>Opponent's turn</span>
                                 }
                             </h1>
                             <div id="board" ref={boardRef}>{boardMarkup}</div>
