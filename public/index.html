@@ -14,6 +14,12 @@
   <title>Tic Tac Toe!</title>
 </head>
 
+<script>
+  if (performance.navigation.type === performance.navigation.TYPE_RELOAD) {
+    window.location.href = '/'
+  }
+</script>
+
 <body>
   <noscript>You need to enable JavaScript to run this app.</noscript>
   <div id="root"></div>
